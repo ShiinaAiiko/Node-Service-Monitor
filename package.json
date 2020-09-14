@@ -6,8 +6,7 @@
 	"scripts": {
 		"dev": "nodemon --watch ./ -e ts --exec ts-node ./app.ts",
 		"build": "tsc",
-		"sever": "npm run build && node ./dist/Node-Service-Monitor/app.js ",
-		"pm2": "pm2 start ./pm2.config.js"
+		"sever": "npm run build && node ./dist/Node-Service-Monitor/app.js "
 	},
 	"author": "aiiko",
 	"license": "ISC",
