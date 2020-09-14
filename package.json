@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "nodemon --watch ./ -e ts --exec ts-node ./app.ts",
 		"build": "tsc",
+    "pm22": "pm2 start npm --watch --name 'Node-Service-Monitor' -- run sever --output ./log/output.log --error ./log/error.log",
 		"sever": "npm run build && node ./dist/Node-Service-Monitor/app.js "
 	},
 	"author": "aiiko",
