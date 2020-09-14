@@ -56,13 +56,13 @@ function taskEvent() {
 			} catch (error) {
 				let bool: Boolean = true
 
-				if (apiItem.allow && apiItem.allow.length) {
+				if (apiItem.allow && apiItem.allow.status && apiItem.allow.status.length) {
 					apiItem.allow.status.forEach((status: number) => {
 						if (error.response.status === status) {
 							bool = false
 						}
 					})
-				}
+        }
 				bool &&
 					report(serviceItem, apiItem.url, error.response.status || 404, error)
 			}
