@@ -9,6 +9,7 @@
 		"sever": "npm run build && node ./dist/Node-Service-Monitor/app.js "
 	},
 	"author": "aiiko",
+  "repository":{},
 	"license": "ISC",
 	"dependencies": {
 		"axios": "^0.20.0",
