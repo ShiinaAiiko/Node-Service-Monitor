@@ -13,4 +13,6 @@ run/
 typings/
 app/public/
 dist/
+dist
+dist/nodesm.config.js
 .nyc_output/
