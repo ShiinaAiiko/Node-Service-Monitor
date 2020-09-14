@@ -1,6 +1,6 @@
 import schedule = require('node-schedule')
 import { service, email, emailOption } from '../nodesm.config'
-import Axios from 'Axios'
+import Axios from 'axios'
 
 // 发送邮件组件
 import nodemailer = require('nodemailer')
