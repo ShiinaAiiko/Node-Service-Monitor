@@ -38,7 +38,7 @@ function taskEvent() {
 					params: apiItem.params,
 					data: apiItem.data,
 				})
-				// console.log(apiItem.method, res.status, res.data)
+				// console.log(apiItem.url,apiItem.method, res.status, res.data)
 				if (!res) {
 					report(serviceItem, apiItem.url, res.status, res.data)
 				}
@@ -54,15 +54,23 @@ function taskEvent() {
 					}
 				})
 			} catch (error) {
+				if (!error.response) {
+					report(serviceItem, apiItem.url, 404, error)
+					return
+				}
 				let bool: Boolean = true
 
-				if (apiItem.allow && apiItem.allow.status && apiItem.allow.status.length) {
+				if (
+					apiItem.allow &&
+					apiItem.allow.status &&
+					apiItem.allow.status.length
+				) {
 					apiItem.allow.status.forEach((status: number) => {
 						if (error.response.status === status) {
 							bool = false
 						}
 					})
-        }
+				}
 				bool &&
 					report(serviceItem, apiItem.url, error.response.status || 404, error)
 			}
@@ -75,8 +83,14 @@ function report(serviceItem: any, url: string, status: number, error: any) {
 	// console.log(serviceItem.name, url, status, error)
 	// sendEmail()
 	email.forEach(async (emailItem: string) => {
+		console.log(serviceItem.testCount)
 		// console.log(serviceItem.createTime,(serviceItem.createTime || 0) <= getDate().UTC)
 		if ((serviceItem.createTime || 0) <= getDate().UTC) {
+			if ((serviceItem.testCount || 0) < 3) {
+				serviceItem.testCount && serviceItem.testCount++
+				!serviceItem.testCount && (serviceItem.testCount = 1)
+				return
+			}
 			let res = await sendEmail({
 				email: emailItem,
 				serviceName: serviceItem.name,
@@ -89,6 +103,7 @@ function report(serviceItem: any, url: string, status: number, error: any) {
 			})
 			// console.log(res)
 			if (res) {
+				serviceItem.testCount = 0
 				serviceItem.createTime = getDate().UTC + 3600 * 1
 				// console.log(serviceItem.createTime)
 			}
