@@ -37,22 +37,32 @@ function taskEvent() {
 					url: apiItem.url,
 					params: apiItem.params,
 					data: apiItem.data,
-				})
-				// console.log(apiItem.url,apiItem.method, res.status, res.data)
+        })
+        // console.log(res.status)
+				// console.log(apiItem.url, apiItem.method, res.status, res.data)
 				if (!res) {
 					report(serviceItem, apiItem.url, res.status, res.data)
+					return
 				}
 				if (res.status === 404) {
 					report(serviceItem, apiItem.url, res.status, res.data)
+					return
 				}
 				if (res.status >= 500) {
 					report(serviceItem, apiItem.url, res.status, res.data)
+					return
 				}
+				let bool: Boolean = false
 				apiItem.denyAllow.status.forEach((status: number) => {
 					if (res.status === status) {
-						report(serviceItem, apiItem.url, res.status, res.data)
+						bool = true
 					}
 				})
+				if (bool) {
+					report(serviceItem, apiItem.url, res.status, res.data)
+					return
+				}
+				serviceItem.testCount = 0
 			} catch (error) {
 				if (!error.response) {
 					report(serviceItem, apiItem.url, 404, error)
@@ -81,9 +91,9 @@ function taskEvent() {
 function report(serviceItem: any, url: string, status: number, error: any) {
 	// console.log('服务异常了')
 	// console.log(serviceItem.name, url, status, error)
-	// sendEmail()
+  // sendEmail()
 	email.forEach(async (emailItem: string) => {
-		console.log(serviceItem.testCount)
+		// console.log(emailItem,serviceItem.testCount)
 		// console.log(serviceItem.createTime,(serviceItem.createTime || 0) <= getDate().UTC)
 		if ((serviceItem.createTime || 0) <= getDate().UTC) {
 			if ((serviceItem.testCount || 0) < 3) {
