@@ -82,7 +82,7 @@ function memReport(memInfo: any) {
 					memInfo.used +
 					'，还剩余：' +
 					memInfo.free +
-					'，百分比' +
+					'，百分比：' +
 					memInfo.percentage,
 				error: '',
 				title: 'PSS后端服务 "' + option.severName + '" 内存超出阈值',
@@ -228,7 +228,7 @@ function sendEmail(data: any): any {
 				: '') +
 			(data.status
 				? `</p>
-      <p>状态码：` + data.status
+      <p>状态：` + data.status
 				: '') +
 			(data.error
 				? `</p>
