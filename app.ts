@@ -1,12 +1,20 @@
 import schedule = require('node-schedule')
-import { service, email, emailOption } from '../nodesm.config'
+import {
+	service,
+	email,
+	option,
+	emailOption,
+	threshold,
+} from '../nodesm.config'
 import Axios from 'axios'
 
 // 发送邮件组件
 import nodemailer = require('nodemailer')
+import os = require('os')
+
+let memSendTime: number = getDate().UTC
 
 console.log('Node-Service-Monitor starting...')
-
 // 检测各种服务ing
 const startTask: any = () => {
 	//每分钟的第30秒定时执行一次:
@@ -24,9 +32,81 @@ const startTask: any = () => {
 
 startTask()
 
+function calcMem(): Object {
+	let memTotal: number = Math.floor(os.totalmem() / (1024 * 1024)),
+		memFree: number = Math.floor(os.freemem() / (1024 * 1024))
+	return {
+		total: memTotal,
+		used: memTotal - memFree,
+		free: memFree,
+		ratio: Math.floor((memFree / memTotal) * 100) / 100,
+		percentage: Math.floor((memFree / memTotal) * 100) + '%',
+	}
+}
+// console.log(threshold, os.loadavg())
+// console.log(calcMem())
+function getIPAdress() {
+	var interfaces = os.networkInterfaces()
+	for (var devName in interfaces) {
+		var iface = interfaces[devName]
+		for (var i = 0; i < iface.length; i++) {
+			var alias = iface[i]
+			if (
+				alias.family === 'IPv4' &&
+				alias.address !== '127.0.0.1' &&
+				!alias.internal
+			) {
+				return alias.address
+			}
+		}
+	}
+}
+// console.log(process.env.SERVER_NAME)
+function memReport(memInfo: any) {
+	// console.log('服务异常了')
+	// console.log(serviceItem.name, url, status, error)
+	// sendEmail()
+	email.forEach(async (emailItem: string) => {
+		// console.log(emailItem,serviceItem.testCount)
+		// console.log(serviceItem.createTime,(serviceItem.createTime || 0) <= getDate().UTC)
+		if ((memSendTime || 0) <= getDate().UTC) {
+			let res = await sendEmail({
+				email: emailItem,
+				serviceName: option.severName,
+				platform: '',
+				url: '',
+				status:
+					'内存超出阈值了，总量：' +
+					memInfo.total +
+					'，已使用：' +
+					memInfo.used +
+					'，还剩余：' +
+					memInfo.free +
+					'，百分比' +
+					memInfo.percentage,
+				error: '',
+				title: 'PSS后端服务 "' + option.severName + '" 内存超出阈值',
+				author: 'PSS Hera System · NodeJS · 后端服务心跳监测系统',
+			})
+			// console.log(res)
+			if (res) {
+				memSendTime = getDate().UTC + 3600 * 1
+				// console.log(serviceItem.createTime)
+			}
+		}
+	})
+}
 function taskEvent() {
 	// console.log('scheduleCronstyle:' + new Date())
 
+	// 检测内存服务
+	let memInfo: any = calcMem()
+	// 超出了阈值
+	if (memInfo.ratio < threshold.mem) {
+		memReport(memInfo)
+	}
+
+	// 检测API服务
 	service.forEach((serviceItem: any) => {
 		// console.log(serviceItem.apis)
 		serviceItem.apis.forEach(async (apiItem: any) => {
@@ -37,19 +117,19 @@ function taskEvent() {
 					url: apiItem.url,
 					params: apiItem.params,
 					data: apiItem.data,
-        })
-        // console.log(res.status)
+				})
+				// console.log(res.status)
 				// console.log(apiItem.url, apiItem.method, res.status, res.data)
 				if (!res) {
-					report(serviceItem, apiItem.url, res.status, res.data)
+					emailReport(serviceItem, apiItem.url, res.status, res.data)
 					return
 				}
 				if (res.status === 404) {
-					report(serviceItem, apiItem.url, res.status, res.data)
+					emailReport(serviceItem, apiItem.url, res.status, res.data)
 					return
 				}
 				if (res.status >= 500) {
-					report(serviceItem, apiItem.url, res.status, res.data)
+					emailReport(serviceItem, apiItem.url, res.status, res.data)
 					return
 				}
 				let bool: Boolean = false
@@ -59,13 +139,13 @@ function taskEvent() {
 					}
 				})
 				if (bool) {
-					report(serviceItem, apiItem.url, res.status, res.data)
+					emailReport(serviceItem, apiItem.url, res.status, res.data)
 					return
 				}
 				serviceItem.testCount = 0
 			} catch (error) {
 				if (!error.response) {
-					report(serviceItem, apiItem.url, 404, error)
+					emailReport(serviceItem, apiItem.url, 404, error)
 					return
 				}
 				let bool: Boolean = true
@@ -82,16 +162,26 @@ function taskEvent() {
 					})
 				}
 				bool &&
-					report(serviceItem, apiItem.url, error.response.status || 404, error)
+					emailReport(
+						serviceItem,
+						apiItem.url,
+						error.response.status || 404,
+						error
+					)
 			}
 		})
 	})
 }
 
-function report(serviceItem: any, url: string, status: number, error: any) {
+function emailReport(
+	serviceItem: any,
+	url: string,
+	status: number,
+	error: any
+) {
 	// console.log('服务异常了')
 	// console.log(serviceItem.name, url, status, error)
-  // sendEmail()
+	// sendEmail()
 	email.forEach(async (emailItem: string) => {
 		// console.log(emailItem,serviceItem.testCount)
 		// console.log(serviceItem.createTime,(serviceItem.createTime || 0) <= getDate().UTC)
@@ -128,18 +218,22 @@ function sendEmail(data: any): any {
 			`
       <p>服务名：` +
 			data.serviceName +
-			`</p>
-      <p>后端语言：` +
-			data.platform +
-			`</p>
-      <p>心跳检测地址：` +
-			data.url +
-			`</p>
-      <p>状态码：` +
-			data.status +
-			`</p>
-      <p>错误信息：` +
-			data.error +
+			(data.platform
+				? `</p>
+      <p>后端语言：` + data.platform
+				: '') +
+			(data.url
+				? `</p>
+      <p>心跳检测地址：` + data.url
+				: '') +
+			(data.status
+				? `</p>
+      <p>状态码：` + data.status
+				: '') +
+			(data.error
+				? `</p>
+      <p>错误信息：` + data.error
+				: '') +
 			`</p>
     `
 		// 发送邮件验证
